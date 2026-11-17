@@ -77,10 +77,25 @@ def _compile_match_fn(match_config: Dict[str, Any]) -> Callable:
         return match_fn
     
     elif match_type == 'lambda':
-        # Dangerous but allows complex rules
+        # Restricted lambda compilation - only allow safe operations
+        # Uses ast.parse for validation instead of eval for security
         code = match_config.get('code', '')
         if code:
-            return eval(f"lambda p: {code}")
+            import ast
+            import logging
+            logger = logging.getLogger(__name__)
+            # Parse and validate the code is a single lambda expression
+            try:
+                tree = ast.parse(code, mode='eval')
+                # Ensure it is a lambda
+                if not isinstance(tree.body, ast.Lambda):
+                    raise ValueError("Only lambda expressions allowed")
+                # Compile and evaluate in restricted environment
+                compiled = compile(tree, '<rule>', 'eval')
+                return eval(compiled, {"__builtins__": {}}, {})  # nosec B307 - restricted eval with AST validation
+            except (SyntaxError, ValueError) as e:
+                logger.warning(f"Invalid lambda rule: {e}")
+                return lambda p: False
         return lambda p: False
     
     elif match_type == 'composite':

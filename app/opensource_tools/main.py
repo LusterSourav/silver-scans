@@ -170,9 +170,13 @@ async def main():
         # Export report
         if args.output:
             report = orchestrator.export_report(result, args.format)
-            with open(args.output, 'w') as f:
+            # Prevent path traversal - only allow basename
+            import os
+            safe_output = os.path.basename(args.output)
+            output_path = os.path.join(os.getcwd(), safe_output)
+            with open(output_path, 'w') as f:
                 f.write(report)
-            print(f"\nReport saved to: {args.output}")
+            print(f"\nReport saved to: {output_path}")
         else:
             # Print summary to stdout
             print("\n" + "=" * 50)

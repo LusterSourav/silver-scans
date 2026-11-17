@@ -241,7 +241,7 @@ class LogAnalyzer:
     
     def _create_alert(self, pattern: 'LogPattern', entry: LogEntry) -> 'LogAlert':
         return LogAlert(
-            alert_id=f"LOG-{datetime.now().strftime('%Y%m%d%H%M%S')}-{hashlib.md5(str(entry).encode()).hexdigest()[:8]}",
+            alert_id=f"LOG-{datetime.now().strftime('%Y%m%d%H%M%S')}-{hashlib.sha256(str(entry).encode()).hexdigest()[:8]}",
             timestamp=datetime.now(),
             severity=pattern.severity,
             category=pattern.category,

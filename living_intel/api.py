@@ -564,7 +564,7 @@ async def export_stix(request: web.Request) -> web.Response:
     # Convert to STIX 2.1 bundle
     stix_bundle = {
         "type": "bundle",
-        "id": f"bundle--{hashlib.md5(str(datetime.now()).encode()).hexdigest()[:16]}",
+        "id": f"bundle--{hashlib.sha256(str(datetime.now()).encode()).hexdigest()[:16]}",
         "spec_version": "2.1",
         "objects": []
     }
@@ -646,7 +646,7 @@ def _item_to_stix(item: Dict) -> Optional[Dict]:
         return {
             "type": "ipv4-addr" if ioc_type == "ipv4" else "ipv6-addr",
             "spec_version": "2.1",
-            "id": f"ipv4-addr--{hashlib.md5(value.encode()).hexdigest()[:16]}" if ioc_type == "ipv4" else f"ipv6-addr--{hashlib.md5(value.encode()).hexdigest()[:16]}",
+            "id": f"ipv4-addr--{hashlib.sha256(value.encode()).hexdigest()[:16]}" if ioc_type == "ipv4" else f"ipv6-addr--{hashlib.sha256(value.encode()).hexdigest()[:16]}",
             "value": value,
             "labels": ["malicious"] if item.get("severity") in ["HIGH", "CRITICAL"] else ["suspicious"],
             "confidence": int(item.get("confidence", 0.5) * 100),
@@ -657,7 +657,7 @@ def _item_to_stix(item: Dict) -> Optional[Dict]:
         return {
             "type": "domain-name",
             "spec_version": "2.1",
-            "id": f"domain-name--{hashlib.md5(value.encode()).hexdigest()[:16]}",
+            "id": f"domain-name--{hashlib.sha256(value.encode()).hexdigest()[:16]}",
             "value": value,
             "labels": ["malicious"] if item.get("severity") in ["HIGH", "CRITICAL"] else ["suspicious"],
             "confidence": int(item.get("confidence", 0.5) * 100),
@@ -668,7 +668,7 @@ def _item_to_stix(item: Dict) -> Optional[Dict]:
         return {
             "type": "url",
             "spec_version": "2.1",
-            "id": f"url--{hashlib.md5(value.encode()).hexdigest()[:16]}",
+            "id": f"url--{hashlib.sha256(value.encode()).hexdigest()[:16]}",
             "value": value,
             "labels": ["malicious"] if item.get("severity") in ["HIGH", "CRITICAL"] else ["suspicious"],
             "confidence": int(item.get("confidence", 0.5) * 100),
@@ -680,7 +680,7 @@ def _item_to_stix(item: Dict) -> Optional[Dict]:
         return {
             "type": "file",
             "spec_version": "2.1",
-            "id": f"file--{hashlib.md5(value.encode()).hexdigest()[:16]}",
+            "id": f"file--{hashlib.sha256(value.encode()).hexdigest()[:16]}",
             "hashes": {hash_type.lower(): value},
             "labels": ["malicious"] if item.get("severity") in ["HIGH", "CRITICAL"] else ["suspicious"],
             "confidence": int(item.get("confidence", 0.5) * 100),
@@ -691,7 +691,7 @@ def _item_to_stix(item: Dict) -> Optional[Dict]:
         return {
             "type": "vulnerability",
             "spec_version": "2.1",
-            "id": f"vulnerability--{hashlib.md5(value.encode()).hexdigest()[:16]}",
+            "id": f"vulnerability--{hashlib.sha256(value.encode()).hexdigest()[:16]}",
             "name": value,
             "description": item.get("context", {}).get("description", ""),
             "labels": ["exploited"] if item.get("tags", []).count("exploited") else ["vulnerability"],

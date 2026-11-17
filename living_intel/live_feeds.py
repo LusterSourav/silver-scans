@@ -363,7 +363,7 @@ class LiveFeedManager:
                                     event_data = json.loads(data)
                                     event = LiveFeedEvent(
                                         feed_name=feed.name,
-                                        event_id=last_event_id or hashlib.md5(data.encode()).hexdigest()[:16],
+                                        event_id=last_event_id or hashlib.sha256(data.encode()).hexdigest()[:16],
                                         timestamp=datetime.now(),
                                         event_type=event_data.get("type", "unknown"),
                                         data=event_data,
@@ -422,7 +422,7 @@ class LiveFeedManager:
                             data = json.loads(message)
                             event = LiveFeedEvent(
                                 feed_name=feed.name,
-                                event_id=data.get("id", hashlib.md5(message.encode()).hexdigest()[:16]),
+                                event_id=data.get("id", hashlib.sha256(message.encode()).hexdigest()[:16]),
                                 timestamp=datetime.now(),
                                 event_type=data.get("type", "unknown"),
                                 data=data,

@@ -178,7 +178,7 @@ class AlertDeduplicator:
             alert.target_ip,
             alert.category
         ]
-        return hashlib.md5("|".join(filter(None, key_parts)).encode()).hexdigest()
+        return hashlib.sha256("|".join(filter(None, key_parts)).encode()).hexdigest()
     
     def get_count(self, alert: 'ThreatAlert') -> int:
         fingerprint = self._fingerprint(alert)
@@ -227,7 +227,7 @@ class AlertCorrelator:
             return corr_id
         
         # Create new correlation ID
-        new_corr_id = f"INC-{datetime.now().strftime('%Y%m%d%H%M%S')}-{hashlib.md5(str(time.time()).encode()).hexdigest()[:8]}"
+        new_corr_id = f"INC-{datetime.now().strftime('%Y%m%d%H%M%S')}-{hashlib.sha256(str(time.time()).encode()).hexdigest()[:8]}"
         self.alerts_by_correlation[new_corr_id].append(alert)
         return new_corr_id
     

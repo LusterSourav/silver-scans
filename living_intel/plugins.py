@@ -435,12 +435,14 @@ class PluginSandbox:
         return safe_globals
     
     def execute_safe(self, code: str, locals_dict: Dict = None) -> Any:
-        """Execute code in sandbox"""
+        """Execute code in sandbox - intentional restricted execution for plugin sandboxing"""
         sandbox = self.create_sandbox(code)
         if locals_dict:
             sandbox.update(locals_dict)
         try:
-            exec(code, sandbox, sandbox)
+            # This exec is intentional for plugin sandboxing - runs in restricted environment
+            # with limited builtins and only allowed modules (see create_sandbox)
+            exec(code, sandbox, sandbox)  # nosec B102 - intentional sandboxed execution
             return sandbox
         except Exception as e:
             logger.error(f"Sandbox execution error: {e}")

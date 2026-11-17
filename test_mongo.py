@@ -12,7 +12,7 @@ from pymongo import MongoClient
 uri = os.environ.get("MONGO_TEST_URI")
 if not uri:
     print("ERROR: MONGO_TEST_URI environment variable is required")
-    print("Example: export MONGO_TEST_URI='mongodb://user:pass@host:port'")
+    print("Example: export MONGO_TEST_URI='mongodb://<user>:<pass>@<host>:<port>/<db>'")
     sys.exit(1)
 
 client = MongoClient(uri)

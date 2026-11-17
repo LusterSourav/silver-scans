@@ -9,7 +9,7 @@ services:
       - "8000:8000"
     environment:
       - REDIS_URL=redis://:redis_secure_password_change_me@redis:6379/0
-      - MONGO_URL=mongodb://admin:RgjqVvzVTw1crPWy@mongo:27017
+      - MONGO_URL=mongodb://admin:${MONGO_PASSWORD}@mongo:27017
       - MONGO_DB=forensics
       - VT_API_KEY=
       - SECRET_KEY=${SECRET_KEY}
@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile.worker
     environment:
       - REDIS_URL=redis://:redis_secure_password_change_me@redis:6379/0
-      - MONGO_URL=mongodb://admin:RgjqVvzVTw1crPWy@mongo:27017
+      - MONGO_URL=mongodb://admin:${MONGO_PASSWORD}@mongo:27017
       - MONGO_DB=forensics
       - VT_API_KEY=
       - MOBSF_URL=http://mobsf:8000
@@ -62,7 +62,7 @@ services:
     command: celery -A app.celery_app beat --loglevel=info
     environment:
       - REDIS_URL=redis://:redis_secure_password_change_me@redis:6379/0
-      - MONGO_URL=mongodb://admin:RgjqVvzVTw1crPWy@mongo:27017
+      - MONGO_URL=mongodb://admin:${MONGO_PASSWORD}@mongo:27017
       - MONGO_DB=forensics
       - JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
       - PATH=/usr/lib/jvm/java-21-openjdk-arm64/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -175,7 +175,7 @@ services:
       - mongo_data:/data/db
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=RgjqVvzVTw1crPWy
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
       - MONGO_INITDB_DATABASE=forensics
     profiles:
       - intel
