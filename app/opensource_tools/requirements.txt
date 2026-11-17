@@ -1,0 +1,19 @@
+# Open Source Security Tools Requirements
+
+# Core
+aiohttp>=3.9.0
+aiofiles>=23.0.0
+pydantic>=2.0.0
+PyYAML>=6.0.0
+
+# Tool specific (installed via system packages)
+# grype, trivy, trufflehog, gitleaks, detect-secrets
+# dependency-check, yara, frida, objection, drozer
+# cuckoo, radare2, ghidra, jadx, apktool
+# proguard, retrace
+
+# For MISP, OpenCTI, Yeti integrations
+# aiohttp (already listed)
+
+# Optional
+python-magic>=0.4.27
