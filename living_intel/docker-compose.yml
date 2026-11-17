@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: living_intel_postgres
+    environment:
+      POSTGRES_DB: living_intel
+      POSTGRES_USER: living_intel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-living_intel_secure_password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U living_intel -d living_intel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - living_intel_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: living_intel_redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - living_intel_network
+
+  living-intel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: living_intel_platform
+    environment:
+      DATABASE_URL: postgresql://living_intel:${POSTGRES_PASSWORD:-living_intel_secure_password}@postgres:5432/living_intel
+      REDIS_URL: redis://redis:6379
+      VT_API_KEY: ${VT_API_KEY}
+      OTX_API_KEY: ${OTX_API_KEY}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      MISP_URL: ${MISP_URL}
+      MISP_KEY: ${MISP_KEY}
+      OPENCTI_URL: ${OPENCTI_URL}
+      OPENCTI_TOKEN: ${OPENCTI_TOKEN}
+      TAXII_URL: ${TAXII_URL}
+      TAXII_USER: ${TAXII_USER}
+      TAXII_PASS: ${TAXII_PASS}
+      MAXMIND_LICENSE_KEY: ${MAXMIND_LICENSE_KEY}
+      HYBRID_ANALYSIS_API_KEY: ${HYBRID_ANALYSIS_API_KEY}
+      GREYNOISE_API_KEY: ${GREYNOISE_API_KEY}
+      SHODAN_API_KEY: ${SHODAN_API_KEY}
+      PASSIVETOTAL_USERNAME: ${PASSIVETOTAL_USERNAME}
+      PASSIVETOTAL_API_KEY: ${PASSIVETOTAL_API_KEY}
+      LIVING_INTEL_HOST: 0.0.0.0
+      LIVING_INTEL_PORT: 8080
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - /usr/share/GeoIP:/usr/share/GeoIP:ro
+    restart: unless-stopped
+    networks:
+      - living_intel_network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+        reservations:
+          memory: 1G
+          cpus: '1'
+
+  geoip-updater:
+    image: maxmindinc/geoipupdate:latest
+    container_name: living_intel_geoip_updater
+    environment:
+      GEOIPUPDATE_ACCOUNT_ID: ${MAXMIND_ACCOUNT_ID}
+      GEOIPUPDATE_LICENSE_KEY: ${MAXMIND_LICENSE_KEY}
+      GEOIPUPDATE_EDITION_IDS: GeoLite2-City GeoLite2-ASN GeoLite2-Country
+      GEOIPUPDATE_FREQUENCY: 168  # Weekly
+      GEOIPUPDATE_OUTPUT_DIR: /usr/share/GeoIP
+    volumes:
+      - /usr/share/GeoIP:/usr/share/GeoIP
+    restart: unless-stopped
+    networks:
+      - living_intel_network
+
+  # Optional: Elasticsearch for advanced search
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+  #   container_name: living_intel_elasticsearch
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #     - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+  #   volumes:
+  #     - elasticsearch_data:/usr/share/elasticsearch/data
+  #   ports:
+  #     - "9200:9200"
+  #   networks:
+  #     - living_intel_network
+
+  # Optional: Kibana for visualization
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:8.11.0
+  #   container_name: living_intel_kibana
+  #   environment:
+  #     - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+  #   ports:
+  #     - "5601:5601"
+  #   depends_on:
+  #     - elasticsearch
+  #   networks:
+  #     - living_intel_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  # elasticsearch_data:
+
+networks:
+  living_intel_network:
+    driver: bridge
