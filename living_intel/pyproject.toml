@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "living-intel"
+version = "1.0.0"
+description = "Living Threat Intelligence Platform - Self-updating, plugin-based threat intelligence with live feeds"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.9.0",
+    "aiohttp-cors>=0.7.0",
+    "asyncpg>=0.29.0",
+    "redis>=5.0.0",
+    "aioredis>=2.0.0",
+    "aiofiles>=23.0.0",
+    "certifi>=2024.0.0",
+    "geoip2>=4.8.0",
+    "stix2>=3.0.0",
+    "taxii2-client>=2.2.0",
+    "pymisp>=3.0.0",
+    "psycopg2-binary>=2.9.0",
+    "python-dotenv>=1.0.0",
+    "PyYAML>=6.0.0",
+    "semver>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+living-intel = "living_intel.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["living_intel*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
