@@ -1,0 +1,11 @@
+# TODO: Replace with specific digest from ghcr.io/ghidra/ghidra
+# Get digest with: docker pull ghcr.io/ghidra/ghidra:latest && docker images --digests
+# Example: FROM ghcr.io/ghidra/ghidra@sha256:<digest>
+FROM ghcr.io/ghidra/ghidra:latest
+
+WORKDIR /app
+
+COPY app/ghidra_scripts /app/ghidra_scripts
+
+ENTRYPOINT ["/opt/ghidra/ghidraRun"]
+CMD ["-headless", "/tmp/project", "analyze", "-import", "/data/input", "-scriptPath", "/app/ghidra_scripts", "-postScript", "ExtractInfo.java"]

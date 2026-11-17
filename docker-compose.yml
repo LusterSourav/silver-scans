@@ -1,0 +1,319 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://:redis_secure_password_change_me@redis:6379/0
+      - MONGO_URL=mongodb://admin:RgjqVvzVTw1crPWy@mongo:27017
+      - MONGO_DB=forensics
+      - VT_API_KEY=
+      - SECRET_KEY=${SECRET_KEY}
+      - MOBSF_URL=http://mobsf:8000
+      - MOBSF_API_KEY=
+      - LIVING_INTEL_URL=http://living-intel:8080
+    depends_on:
+      - redis
+      - mongo
+      - mobsf
+      - living-intel
+    volumes:
+      - ./app:/app/app
+      - ./data:/data
+      - ./rules:/app/rules
+    profiles:
+      - intel
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - REDIS_URL=redis://:redis_secure_password_change_me@redis:6379/0
+      - MONGO_URL=mongodb://admin:RgjqVvzVTw1crPWy@mongo:27017
+      - MONGO_DB=forensics
+      - VT_API_KEY=
+      - MOBSF_URL=http://mobsf:8000
+      - MOBSF_API_KEY=
+      - JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
+      - PATH=/usr/lib/jvm/java-21-openjdk-arm64/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - LIVING_INTEL_URL=http://living-intel:8080
+    depends_on:
+      - redis
+      - mongo
+      - mobsf
+      - living-intel
+    volumes:
+      - ./app:/app/app
+      - ./data:/data
+      - ./rules:/app/rules
+      - ./data:/data
+    profiles:
+      - intel
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      - REDIS_URL=redis://:redis_secure_password_change_me@redis:6379/0
+      - MONGO_URL=mongodb://admin:RgjqVvzVTw1crPWy@mongo:27017
+      - MONGO_DB=forensics
+      - JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
+      - PATH=/usr/lib/jvm/java-21-openjdk-arm64/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - LIVING_INTEL_URL=http://living-intel:8080
+    depends_on:
+      - redis
+      - mongo
+      - living-intel
+    profiles:
+      - intel
+
+  mobsf:
+    image: opensecurity/mobile-security-framework-mobsf:latest
+    ports:
+      - "127.0.0.1:8001:8000"  # Restricted to localhost only
+    environment:
+      - MOBSF_API_KEY=
+    volumes:
+      - mobsf_data:/home/mobsf/.MobSF
+    profiles:
+      - intel
+
+  living-intel:
+    build:
+      context: ./living_intel
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"  # Restricted to localhost only
+    environment:
+      - DATABASE_URL=postgresql://living_intel:${POSTGRES_PASSWORD}@postgres:5432/living_intel
+      - REDIS_URL=redis://:redis_secure_password_change_me@redis:6379/1
+      - VT_API_KEY=
+      - OTX_API_KEY=
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - MISP_URL=
+      - MISP_KEY=
+      - OPENCTI_URL=
+      - OPENCTI_TOKEN=
+      - TAXII_URL=
+      - TAXII_USER=
+      - TAXII_PASS=
+      - MAXMIND_ACCOUNT_ID=
+      - MAXMIND_LICENSE_KEY=
+      - HYBRID_ANALYSIS_API_KEY=
+      - GREYNOISE_API_KEY=
+      - SHODAN_API_KEY=
+      - PASSIVETOTAL_USERNAME=
+      - PASSIVETOTAL_API_KEY=
+      - URLHAUS_API_KEY=
+      - NVD_API_KEY=
+      - LIVING_INTEL_HOST=0.0.0.0
+      - LIVING_INTEL_PORT=8080
+      - LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./living_intel/data:/app/data
+      - /usr/share/GeoIP:/usr/share/GeoIP:ro
+    profiles:
+      - intel
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+        reservations:
+          memory: 1G
+          cpus: '1'
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: living_intel
+      POSTGRES_USER: living_intel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./living_intel/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # Port mapping removed - internal network only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U living_intel -d living_intel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - intel
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --databases 16 --requirepass redis_secure_password_change_me
+    # Port mapping removed - internal network only
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_secure_password_change_me", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - intel
+
+  mongo:
+    image: mongo:7
+    # Port mapping removed - internal network only
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=RgjqVvzVTw1crPWy
+      - MONGO_INITDB_DATABASE=forensics
+    profiles:
+      - intel
+
+  # Open Source Security Tools
+  grype:
+    image: anchore/grype:latest
+    environment:
+      - GRYPE_DB_AUTO_UPDATE=true
+    volumes:
+      - ./data:/data
+      - ./app/opensource_tools/rules:/rules
+    profiles:
+      - intel
+      - tools
+
+  trivy:
+    image: aquasec/trivy:latest
+    environment:
+      - TRIVY_DB_REPOSITORY=ghcr.io/aquasecurity/trivy-db:2
+      - TRIVY_JAVA_DB_REPOSITORY=ghcr.io/aquasecurity/trivy-java-db:1
+    volumes:
+      - ./data:/data
+      - ./app/opensource_tools/rules:/rules
+    profiles:
+      - intel
+      - tools
+
+  trufflehog:
+    image: trufflesecurity/trufflehog:latest
+    volumes:
+      - ./data:/data
+    profiles:
+      - intel
+      - tools
+
+  gitleaks:
+    image: zricethezav/gitleaks:latest
+    volumes:
+      - ./data:/data
+    profiles:
+      - intel
+      - tools
+
+  detect-secrets:
+    image: python:3.12-slim
+    command: pip install detect-secrets && tail -f /dev/null
+    volumes:
+      - ./data:/data
+    profiles:
+      - intel
+      - tools
+
+  dependency-check:
+    image: owasp/dependency-check:latest
+    environment:
+      - DATA_DIRECTORY=/data
+    volumes:
+      - ./data:/data
+    profiles:
+      - intel
+      - tools
+
+  # ProGuard/R8 service
+  proguard:
+    image: eclipse-temurin:21-jdk
+    command: apt-get update && apt-get install -y proguard && tail -f /dev/null
+    volumes:
+      - ./data:/data
+      - ./app/opensource_tools/proguard_templates:/templates
+    profiles:
+      - intel
+      - tools
+
+  # YARA service
+  yara:
+    image: python:3.12-slim
+    command: apt-get update && apt-get install -y yara && tail -f /dev/null
+    volumes:
+      - ./data:/data
+      - ./app/opensource_tools/rules:/rules
+    profiles:
+      - intel
+      - tools
+
+  # Frida/Objection/Drozer runtime
+  frida:
+    image: python:3.12-slim
+    command: pip install frida-tools objection drozer && tail -f /dev/null
+    volumes:
+      - ./data:/data
+    profiles:
+      - intel
+      - tools
+
+  # Radare2 service
+  radare2:
+    image: radare/radare2:latest
+    command: tail -f /dev/null
+    volumes:
+      - ./data:/data
+    profiles:
+      - intel
+      - tools
+
+  # JADX service
+  jadx:
+    image: eclipse-temurin:21-jdk
+    command: apt-get update && apt-get install -y wget unzip && wget -q https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip -O /tmp/jadx.zip && unzip -q /tmp/jadx.zip -d /opt/jadx && ln -s /opt/jadx/bin/jadx /usr/local/bin/jadx && tail -f /dev/null
+    volumes:
+      - ./data:/data
+    profiles:
+      - intel
+      - tools
+
+  # Apktool service
+  apktool:
+    image: eclipse-temurin:21-jdk
+    command: apt-get update && apt-get install -y apktool && tail -f /dev/null
+    volumes:
+      - ./data:/data
+    profiles:
+      - intel
+      - tools
+
+  # Ghidra service
+  ghidra:
+    build:
+      context: .
+      dockerfile: Dockerfile.ghidra
+    volumes:
+      - ./data:/data
+      - ./app/ghidra_scripts:/app/ghidra_scripts
+    profiles:
+      - re
+
+volumes:
+  redis_data:
+  mongo_data:
+  mobsf_data:
+  postgres_data:
