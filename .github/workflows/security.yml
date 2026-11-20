@@ -29,6 +29,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: false
           vuln-type: 'os,library'
+          skip-files: '.env,.env.*,*.pem,*.key,*.crt'
 
       - name: Upload Trivy results to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
